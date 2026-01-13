@@ -1,0 +1,6 @@
+label_smoothing: 0.0
+lr: 0.1
+max_epochs: 200
+momentum: 0.9
+num_classes: 10
+weight_decay: 0.0005

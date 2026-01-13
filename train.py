@@ -82,7 +82,7 @@ def main() -> None:
     ckpt_cb = ModelCheckpoint(
         dirpath=str(exp_dir / "checkpoints"),
         filename="best-{epoch:03d}-{val_acc:.4f}",
-        monitor="val/acc",
+        monitor="val_acc",
         mode="max",
         save_last=True,
         save_top_k=1,

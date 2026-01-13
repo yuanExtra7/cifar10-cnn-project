@@ -1,72 +1,34 @@
-# CIFAR-10 CNN (PyTorch Lightning)
+# CIFAR-10 CNN（PyTorch Lightning）使用说明
 
-目标：用 **PyTorch + PyTorch Lightning** 训练一个 **CNN**（默认 ResNet-18 CIFAR 适配版），在 CIFAR-10 测试集达到 **Top-1 Accuracy > 93%**。
+本仓库提供一个基于 **PyTorch Lightning** 的 CIFAR-10 训练/测试脚本（默认模型：**ResNet-18 CIFAR 适配版**，属于 CNN）。
 
-## 目录结构
+## 目录结构（你只需要关心这些）
 
-- `train.py`: 训练/测试入口
-- `src/`
-  - `data.py`: CIFAR-10 DataModule
-  - `model.py`: ResNet-18（CIFAR 适配）模型
-  - `lit_module.py`: LightningModule（loss/metrics/optim/scheduler）
+- `train.py`：训练入口（训练结束会自动用 best checkpoint 跑测试集并输出 `test_acc`）
+- `src/`：模型、数据、LightningModule
+- `_data/`：数据集目录（可复用，避免重复下载）
+- `_outputs/`：训练输出目录（日志、checkpoint）
 
-## 环境安装（本地或服务器）
+## 环境准备（服务器推荐）
 
-建议 Python 3.10+。
+建议使用 GPU 环境，并确保 `torch.cuda.is_available()` 为 True。
+
+安装训练依赖（不包含 torch/torchvision；它们应由你的环境/conda 提供）：
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.docker.txt
 ```
 
-## 训练（默认配置）
+> 如果你的环境里没有 torch/torchvision：请先安装 GPU 版 PyTorch，再执行上面的 pip 安装。
 
-下面示例把数据与输出都放在你指定的服务器目录下（建议分开子目录）：
+## 训练（正式跑分）
+
+在仓库根目录执行（默认训练 200 epochs）：
 
 ```bash
 python train.py \
-  --data_dir /root/autodl-tmp/cifar10-cnn/data \
-  --output_dir /root/autodl-tmp/cifar10-cnn/outputs \
-  --max_epochs 200 \
-  --batch_size 256 \
-  --num_workers 8
-```
-
-训练结束后会自动用 **best checkpoint** 在测试集评估并打印 `test/acc`。  
-验证集默认从训练集切分 `--val_size 5000`，避免把测试集用于模型选择（防止“成绩泄漏”）。
-
-## Docker（GPU，4090）
-
-镜像可读性优先：基于官方 PyTorch CUDA runtime 镜像（内部自带 torch/torchvision），额外只装 Lightning 等训练依赖。
-
-### 本地构建镜像
-
-```bash
-cd cifar10-cnn
-docker build -t yuanextra7/cifar10-lightning-cnn:v0.1 .
-```
-
-### 推送到 Docker Hub（public repo 可自动创建）
-
-```bash
-docker push yuanextra7/cifar10-lightning-cnn:v0.1
-```
-
-### 服务器拉取并训练（挂载数据/输出目录）
-
-> 服务器侧需要 Docker + NVIDIA Container Toolkit 可用，并支持 `--gpus all`。
-
-```bash
-mkdir -p /root/autodl-tmp/cifar10-cnn/data /root/autodl-tmp/cifar10-cnn/outputs
-
-docker pull yuanextra7/cifar10-lightning-cnn:v0.1
-docker run --rm --gpus all \
-  -v /root/autodl-tmp/cifar10-cnn/data:/data \
-  -v /root/autodl-tmp/cifar10-cnn/outputs:/outputs \
-  yuanextra7/cifar10-lightning-cnn:v0.1 \
-  --data_dir /data \
-  --output_dir /outputs \
+  --data_dir ./_data \
+  --output_dir ./_outputs \
   --download \
   --accelerator gpu \
   --devices 1 \
@@ -75,37 +37,62 @@ docker run --rm --gpus all \
   --num_workers 8
 ```
 
-### AutoDL 容器里没有 Docker（`docker: command not found`）怎么办？
+- 训练会从训练集切分验证集：`--val_size 5000`（默认），避免用测试集做模型选择。
+- 训练结束会打印测试集指标：`test_acc`、`test_loss`。
 
-你贴的环境里 PID 1 是 `bash`（无 systemd），并且没有 `/var/run/docker.sock`，说明当前容器里 **默认用不了 Docker**。
+## 快速自检（不追分）
 
-你可以尝试在容器内启动一个 `dockerd`（类似 docker-in-docker，**可能被平台限制**）：
-
-```bash
-cd /root/autodl-tmp/cifar10-cnn   # 任选一个目录
-# 把仓库里的脚本内容拷贝过去执行，或直接在你代码目录里执行：
-bash scripts/autodl_install_docker_dind.sh
-```
-
-如果 `docker info` 仍失败，请把：
-- `tail -n 200 /var/log/dockerd.log`
-
-贴给我，我们再决定是否需要换方案（例如不用 Docker 在服务器里直接跑训练，或用平台提供的宿主机 Docker 能力）。
-
-## 只跑一次快速自检（不追分）
+用于验证代码/数据/依赖是否正常：
 
 ```bash
 python train.py \
   --data_dir ./_data \
   --output_dir ./_outputs \
+  --download \
+  --accelerator gpu \
+  --devices 1 \
   --max_epochs 1 \
   --limit_train_batches 2 \
   --limit_val_batches 2 \
   --limit_test_batches 2 \
-  --batch_size 64
+  --batch_size 64 \
+  --num_workers 2
 ```
 
-## 常见问题
+## 结果与产物在哪里
 
-- **会不会每次都下载 CIFAR-10？**  
-  不会。只要 `--data_dir` 目录下已有数据文件，`download=True` 也会跳过下载。
+- **Checkpoint**：`_outputs/<experiment>/checkpoints/`（默认 experiment 为 `resnet18`）
+- **TensorBoard 日志**：`_outputs/<experiment>/tb/`
+
+## 提交用的“测试证明”（建议提交到 GitHub）
+
+为避免把大文件（数据集、checkpoint）提交到 GitHub，建议提交**小文本**证明你达标：
+
+1) 用 checkpoint 重新跑一次测试并输出 json：
+
+```bash
+python eval.py \
+  --data_dir ./_data \
+  --ckpt_path ./_outputs/resnet18/checkpoints/<your_best.ckpt> \
+  --accelerator gpu \
+  --devices 1
+```
+
+它会写入：`reports/test_metrics.json`
+
+2) 把终端输出保存成日志文件（可提交）：
+
+```bash
+python eval.py \
+  --data_dir ./_data \
+  --ckpt_path ./_outputs/resnet18/checkpoints/<your_best.ckpt> \
+  --accelerator gpu \
+  --devices 1 | tee reports/test_log.txt
+```
+
+查看 TensorBoard：
+
+```bash
+tensorboard --logdir ./_outputs --bind_all --port 6006
+```
+

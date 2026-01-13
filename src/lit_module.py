@@ -52,8 +52,10 @@ class CifarLitModule(L.LightningModule):
         else:
             acc = self.test_acc(logits, y)
 
-        self.log(f"{stage}/loss", loss, prog_bar=(stage != "train"), on_step=(stage == "train"), on_epoch=True)
-        self.log(f"{stage}/acc", acc, prog_bar=True, on_step=False, on_epoch=True)
+        # Use "flat" metric names to make checkpoint filename formatting and CLI grepping easier.
+        # (Avoid "/" in keys like "val/acc".)
+        self.log(f"{stage}_loss", loss, prog_bar=(stage != "train"), on_step=(stage == "train"), on_epoch=True)
+        self.log(f"{stage}_acc", acc, prog_bar=True, on_step=False, on_epoch=True)
         return loss
 
     def training_step(self, batch: Any, batch_idx: int) -> torch.Tensor:

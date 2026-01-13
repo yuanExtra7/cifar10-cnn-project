@@ -1,0 +1,9 @@
+{
+  "ckpt_path": "/root/autodl-tmp/cifar10-cnn/_outputs/resnet18/checkpoints/best-epoch=195-val_acc=0.9534.ckpt",
+  "torch": "2.8.0+cu128",
+  "cuda_available": true,
+  "metrics": {
+    "test_loss": 0.19732365012168884,
+    "test_acc": 0.9501079320907593
+  }
+}
